@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+import json
+import os
+import sys
+import time
+from pathlib import Path
+
 import streamlit as st
 
 st.set_page_config(
@@ -8,18 +14,55 @@ st.set_page_config(
     layout="wide",
 )
 
+# #region agent log
+def _debug_log(message: str, data: dict, *, run_id: str, hypothesis_id: str) -> None:
+    """Append a single NDJSON debug line (no secrets)."""
+
+    payload = {
+        "sessionId": "e6e343",
+        "runId": run_id,
+        "hypothesisId": hypothesis_id,
+        "location": "dashboard/app.py",
+        "message": message,
+        "data": data,
+        "timestamp": int(time.time() * 1000),
+    }
+    try:
+        with open("debug-e6e343.log", "a", encoding="utf-8") as f:
+            f.write(json.dumps(payload) + "\n")
+    except Exception:
+        pass
+
+
+_debug_log(
+    "module_import_context",
+    {
+        "cwd": os.getcwd(),
+        "__file__": __file__,
+        "sys_path_head": sys.path[:5],
+        "has_repo_dashboard_dir": Path("dashboard").exists(),
+        "has_components_dir": Path(__file__).resolve().parent.joinpath("components").exists(),
+        "has_utils_dir": Path(__file__).resolve().parent.joinpath("utils").exists(),
+    },
+    run_id="pre-fix",
+    hypothesis_id="H1_import_path",
+)
+# #endregion
+
 
 def main() -> None:
     """Run the Toronto Island Ferry Analytics Streamlit dashboard."""
 
-    from dashboard.components.filters import apply_filters
-    from dashboard.components.kpi_cards import render_kpis
-    from dashboard.components.time_series import (
+    # Import from sibling modules so this works when Streamlit runs `dashboard/app.py`
+    # with `dashboard/` as the first entry on `sys.path`.
+    from components.filters import apply_filters
+    from components.kpi_cards import render_kpis
+    from components.time_series import (
         build_hour_vs_dow_heatmap,
         build_hourly_average_bar,
         build_time_series,
     )
-    from dashboard.utils.data_loader import load_data
+    from utils.data_loader import load_data
 
     st.title("Toronto Island Ferry Analytics Dashboard")
     st.caption("Real-time-style analytics on 15-minute intervals (2015–2025).")

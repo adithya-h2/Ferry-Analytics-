@@ -21,6 +21,9 @@ __pycache__/
 venv/
 .venv/
 
+# Debug logs (local)
+debug-*.log
+
 # Reports / generated assets
 reports/figures/
 
