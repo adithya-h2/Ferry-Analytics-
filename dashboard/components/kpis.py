@@ -34,8 +34,42 @@ def render_kpis(df: pd.DataFrame) -> None:
     st.markdown(
         """
         <style>
-        [data-testid="stMetricValue"] { font-size: 1.8rem; color: #0f172a; font-family: 'Inter', sans-serif;}
-        [data-testid="stMetricLabel"] { font-size: 1rem; font-weight: 600; color: #475569; }
+        [data-testid="stMetric"] {
+            background-color: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 1.2rem 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+        [data-testid="stMetric"]:hover {
+            background-color: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+        }
+        [data-testid="stMetricValue"] { 
+            font-size: 2.2rem; 
+            color: #38bdf8; 
+            font-family: 'Inter', sans-serif;
+            font-weight: 800;
+            line-height: 1.2;
+        }
+        [data-testid="stMetricLabel"] { 
+            font-size: 1.05rem; 
+            font-weight: 600; 
+            color: #f1f5f9; 
+            letter-spacing: 0.025em;
+        }
+        [data-testid="stMetricDelta"] {
+            font-size: 1rem;
+            font-weight: 500;
+        }
+        /* Style the expander to match the card theme subtly */
+        .streamlit-expanderHeader {
+            font-size: 0.9rem;
+            color: #94a3b8;
+        }
         </style>
         """,
         unsafe_allow_html=True
