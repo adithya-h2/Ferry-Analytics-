@@ -4,12 +4,18 @@ import sys
 from pathlib import Path
 
 # Fix relative imports depending on sys.path
+import sys
+from pathlib import Path
+
+project_root = Path(__file__).resolve().parents[2]
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
 try:
-    from dashboard.forecasting.model import extract_next_peak, generate_forecast
-    from dashboard.analytics.anomaly_detection import calculate_health_score
-except ImportError:
     from forecasting.model import extract_next_peak, generate_forecast
     from analytics.anomaly_detection import calculate_health_score
+except ImportError:
+    pass
 
 def render_executive_brief(df: pd.DataFrame):
     """Render a rigorous C-level operational health dashboard."""

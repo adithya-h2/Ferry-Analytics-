@@ -17,24 +17,33 @@ st.set_page_config(
 def main() -> None:
     """Run the Toronto Ferry Decision Support Platform."""
 
+    # Add project root to path safely for deployment
+    project_root = Path(__file__).resolve().parents[1]
+    if str(project_root) not in sys.path:
+        sys.path.insert(0, str(project_root))
+        
+    dashboard_root = Path(__file__).resolve().parent
+    if str(dashboard_root) not in sys.path:
+        sys.path.insert(0, str(dashboard_root))
+
     # Core Utility
-    from dashboard.components.filters import apply_filters
-    from dashboard.utils.data_loader import load_data
+    from components.filters import apply_filters
+    from utils.data_loader import load_data
     
     # Analytics & Logic
-    from dashboard.analytics.anomaly_detection import detect_anomalies
-    from dashboard.forecasting.model import generate_forecast
+    from analytics.anomaly_detection import detect_anomalies
+    from forecasting.model import generate_forecast
     
     # UI Components
-    from dashboard.alerts.monitor import render_system_alerts
-    from dashboard.dashboard_components.kpis import render_kpis
-    from dashboard.dashboard_components.executive_brief import render_executive_brief
-    from dashboard.dashboard_components.visuals import (
+    from alerts.monitor import render_system_alerts
+    from components.kpis import render_kpis
+    from components.executive_brief import render_executive_brief
+    from components.visuals import (
         build_advanced_time_series, 
         build_forecast_chart, 
         build_network_efficiency_heatmap
     )
-    from dashboard.insights.generator import (
+    from insights.generator import (
         get_demand_insight, 
         get_route_insight, 
         get_anomaly_insight, 
