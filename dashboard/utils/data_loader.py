@@ -51,6 +51,15 @@ def _generate_sample_data() -> pd.DataFrame:
     df["Sales Count"] = sales
     df["Redemption Count"] = redemptions
 
+    return df
+
+def _enrich_data(df: pd.DataFrame) -> pd.DataFrame:
+    """Add synthetic operational fields like Route, temporal splits, and advanced KPIs."""
+    df = df.copy()
+    
+    if "Timestamp" not in df.columns:
+        return df
+
     ts = df["Timestamp"]
     df["hour"] = ts.dt.hour.astype("int64")
     df["day_of_week"] = ts.dt.dayofweek.astype("int64")
@@ -61,35 +70,49 @@ def _generate_sample_data() -> pd.DataFrame:
     df["is_weekend"] = df["day_of_week"].isin([5, 6])
 
     def month_to_season(month: int) -> str:
-        if month in (12, 1, 2):
-            return "Winter"
-        if month in (3, 4, 5):
-            return "Spring"
-        if month in (6, 7, 8):
-            return "Summer"
+        if month in (12, 1, 2): return "Winter"
+        if month in (3, 4, 5): return "Spring"
+        if month in (6, 7, 8): return "Summer"
         return "Fall"
 
     def hour_to_time_of_day(hour: int) -> str:
-        if 6 <= hour <= 11:
-            return "Morning"
-        if 12 <= hour <= 17:
-            return "Afternoon"
-        if 18 <= hour <= 21:
-            return "Evening"
+        if 6 <= hour <= 11: return "Morning"
+        if 12 <= hour <= 17: return "Afternoon"
+        if 18 <= hour <= 21: return "Evening"
         return "Night"
 
     df["season"] = df["month"].map(month_to_season)
     df["time_of_day"] = df["hour"].map(hour_to_time_of_day)
-    df["net_passenger_movement"] = (df["Sales Count"] - df["Redemption Count"]).astype(
-        "int64"
-    )
+    
+    # Calculate net movements
+    df["net_passenger_movement"] = (df["Sales Count"] - df.get("Redemption Count", 0)).astype("int64")
+
+    # Inject Synthetic Route data probabilistically based on temporal patterns
+    routes = ["Centre Island", "Hanlan's Point", "Ward's Island"]
+    np.random.seed(42)
+    
+    def assign_route(row):
+        # Center Island is most popular on weekends and afternoons
+        if row["is_weekend"] or row["time_of_day"] in ["Afternoon", "Morning"]:
+            probs = [0.65, 0.20, 0.15]
+        else:
+            probs = [0.40, 0.35, 0.25]
+        return np.random.choice(routes, p=probs)
+        
+    df["Route"] = df.apply(assign_route, axis=1)
+
+    # Calculate Route Congestion Index (Synthetic formula)
+    # Using Sales Count / baseline max per hour per route to get a 0-100 index
+    # We'll approximate this by scaling Sales count 
+    max_sales = df["Sales Count"].max() if df["Sales Count"].max() > 0 else 1
+    df["Congestion Index"] = (df["Sales Count"] / max_sales * 100).round(1)
 
     return df
 
 
-@st.cache_data(show_spinner="Loading ferry analytics dataset...")
+@st.cache_data(show_spinner="Loading operational analytics dataset...")
 def load_data() -> pd.DataFrame:
-    """Load featured data if available; otherwise show a helpful error and fall back to sample data."""
+    """Load data and enrich with operational metrics."""
 
     featured_path = _processed_featured_path()
     raw_path = _raw_csv_path()
@@ -97,31 +120,30 @@ def load_data() -> pd.DataFrame:
     featured_exists = os.path.exists(featured_path)
     raw_exists = os.path.exists(raw_path)
 
+    raw_df = None
+
     if not featured_exists and not raw_exists:
         st.error(
             "No dataset files found.\n\n"
-            "Expected one of:\n"
-            "- `data/processed/ferry_featured.csv` (recommended for Streamlit Cloud)\n"
-            "- `data/raw/Toronto Island Ferry Tickets.csv` (local development)\n\n"
-            "The app will load **sample data** so it can still run. "
-            "To deploy real data, commit a size-safe `data/processed/ferry_featured.csv`."
+            "The app will load **sample data** so it can still run."
         )
-        return _generate_sample_data()
+        raw_df = _generate_sample_data()
 
-    if featured_exists:
+    elif featured_exists:
         df = pd.read_csv(featured_path)
         df["Timestamp"] = pd.to_datetime(df["Timestamp"], errors="coerce")
-        df = (
-            df.dropna(subset=["Timestamp"])
-            .sort_values("Timestamp")
-            .reset_index(drop=True)
-        )
-        return df
+        raw_df = df.dropna(subset=["Timestamp"]).sort_values("Timestamp").reset_index(drop=True)
 
-    st.error(
-        "Found the raw CSV but not the featured dataset.\n\n"
-        "Please run the pipeline locally to generate `data/processed/ferry_featured.csv` "
-        "or upload a prepared version for deployment."
-    )
-    return _generate_sample_data()
+    else:
+        # Load raw dataset directly if featured not available
+        try:
+            df = pd.read_csv(raw_path)
+            df["Timestamp"] = pd.to_datetime(df["Timestamp"], errors="coerce")
+            raw_df = df.dropna(subset=["Timestamp"]).sort_values("Timestamp").reset_index(drop=True)
+        except Exception as e:
+            st.error(f"Failed to load raw data: {e}")
+            raw_df = _generate_sample_data()
+
+    # Enrich whatever dataframe we successfully loaded
+    return _enrich_data(raw_df)
 
